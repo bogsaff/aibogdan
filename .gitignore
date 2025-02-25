@@ -1,0 +1,6 @@
+/.idea/
+/minio_data/
+/db/
+/aibogdan-api/
+/aibogdan-front/
+.DS_Store

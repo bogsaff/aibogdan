@@ -1,0 +1,17 @@
+.env
+.git
+.gitignore
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env.*
+*.log
+README.md
+/minio_data/
+/db/
+/aibogdan-api/
+/aibogdan-front/

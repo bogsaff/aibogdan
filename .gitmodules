@@ -1,0 +1,6 @@
+[submodule "aibogdan-front"]
+	path = aibogdan-front
+	url = https://github.com/aibogdan-front.git
+[submodule "aibogdan-api"]
+	path = aibogdan-api
+	url = https://github.com/aibogdan-api.git

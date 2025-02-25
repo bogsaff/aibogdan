@@ -1,0 +1,121 @@
+services:
+  aibogdan-postgres:
+    image: postgres:14.1-alpine
+    container_name: aibogdan-postgres
+    hostname: aibogdan-postgres
+    restart: always
+    env_file:
+      - ./aibogdan-api/.env
+    ports:
+      - '6063:5432'
+    volumes:
+      - ./db:/var/lib/postgresql/data
+    networks:
+      - aibogdan-net
+  aibogdan-redis:
+    restart: always
+    container_name: aibogdan-redis
+    hostname: aibogdan-redis
+    image: redis:6.2.6
+    ports:
+      - "6061:6379"
+    networks:
+      - aibogdan-net
+    depends_on:
+      - aibogdan-postgres
+  aibogdan-minio:
+    image: docker.io/bitnami/minio:2024
+    restart: always
+    container_name: aibogdan-minio
+    hostname: aibogdan-minio
+    env_file:
+      - ./aibogdan-api/.env
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - ./minio_data:/bitnami/minio/data
+    networks:
+      - aibogdan-net
+  aibogdan-celery:
+    container_name: aibogdan-celery
+    restart: always
+    image: aibogdan-api:latest
+    env_file:
+      - ./aibogdan-api/.env
+    command: bash -c "celery --workdir=./ -A sumext worker -l info"
+    depends_on:
+      - aibogdan-api
+      - aibogdan-redis
+    networks:
+      - aibogdan-net
+    volumes:
+      - ./aibogdan-api:/app
+  aibogdan-celery-beats:
+    container_name: aibogdan-celery-beats
+    restart: always
+    image: aibogdan-api:latest
+    env_file:
+      - ./aibogdan-api/.env
+    command: bash -c "celery -A sumext beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
+    depends_on:
+      - aibogdan-api
+      - aibogdan-redis
+      - aibogdan-postgres
+    networks:
+      - aibogdan-net
+  aibogdan-celery-flower:
+    container_name: aibogdan-celery-flower
+    restart: always
+    image: aibogdan-api:latest
+    command: bash -c "celery -A sumext flower --port=5566 --basic_auth=sumext:DdWw0_,sumext2:DdWw0_2"
+    ports:
+      - "6062:5566"
+    env_file:
+      - ./aibogdan-api/.env
+    depends_on:
+      - aibogdan-api
+      - aibogdan-redis
+      - aibogdan-celery-beats
+      - aibogdan-celery
+    networks:
+      - aibogdan-net
+  aibogdan-api:
+    restart: always
+    container_name: aibogdan-api
+    image: aibogdan-api:latest
+    hostname: aibogdan-api
+    build:
+      context: ./aibogdan-api
+      dockerfile: Dockerfile
+    env_file:
+      - ./aibogdan-api/.env
+    command: bash -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - ./aibogdan-api:/app
+    ports:
+      - "6060:8000"
+    expose:
+      - "8000"
+    depends_on:
+      - aibogdan-postgres
+    networks:
+      - aibogdan-net
+  aibogdan-react:
+    restart: always
+    container_name: aibogdan-react
+    hostname: aibogdan-react
+    build:
+      context: ./aibogdan-front
+      dockerfile: Dockerfile
+    ports:
+      - "6064:80"
+    networks:
+      - aibogdan-net
+volumes:
+  minio_data:
+    driver: local
+networks:
+  aibogdan-net:
+    name: aibogdan-net
+    driver: bridge
